@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -22,6 +23,26 @@ func (c *CodeGenerator) Generate() (string, error) {
 	// Generate functions
 	for _, stmt := range c.ast.Statements {
 		switch s := stmt.(type) {
+		case *ArrayDeclaration:
+			code += fmt.Sprintf("var %s = []interface{}{", s.Name)
+			for i, elem := range s.Elements {
+				if i > 0 {
+					code += ", "
+				}
+				switch v := elem.(type) {
+				case string:
+					if _, err := strconv.Atoi(v); err == nil {
+						code += v // Unquoted number string
+					} else {
+						code += fmt.Sprintf("%q", v)
+					}
+				case int:
+					code += fmt.Sprintf("%d", v)
+				case float64:
+					code += fmt.Sprintf("%f", v)
+				}
+			}
+			code += "}\n"
 		case *FunctionDecl:
 			code += fmt.Sprintf("func %s(%s) interface{} {\n",
 				s.Name, strings.Join(s.Params, ", "))

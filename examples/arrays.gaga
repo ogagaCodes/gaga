@@ -1,0 +1,4 @@
+make array fruits apple banana 5 3.14
+make array matrix 1 2 3 4 5 6
+
+do sum fruits
