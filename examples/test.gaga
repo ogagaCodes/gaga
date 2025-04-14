@@ -1,0 +1,5 @@
+do sum 5 3
+make function greet
+    do sum "Hello " "World"
+end
+variable message is "Gaga language rocks!"
