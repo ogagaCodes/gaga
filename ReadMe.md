@@ -132,3 +132,12 @@ $ go run a.out.go
 ```bash
 go run cmd/gaga/main.go examples/test.gaga
 ```
+
+
+
+## for network call
+# Ubuntu/Debian
+sudo apt-get install libcurl4-openssl-dev
+
+# macOS
+brew install curl

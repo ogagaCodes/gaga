@@ -46,6 +46,17 @@ func NewParser(lexer *Lexer) *Parser {
 	return &Parser{lexer: lexer}
 }
 
+type NetworkCall struct {
+	Method   string
+	URL      string
+	Payload  string
+	Parallel bool
+}
+
+type ParallelBlock struct {
+	Calls []*NetworkCall
+}
+
 func (p *Parser) Parse() (*AST, error) {
 	ast := &AST{}
 	for {
@@ -58,6 +69,18 @@ func (p *Parser) Parse() (*AST, error) {
 		}
 
 		switch tok.Type {
+		case TOKEN_PARALLEL:
+			parallelBlock, err := p.parseParallel()
+			if err != nil {
+				return nil, err
+			}
+			ast.Statements = append(ast.Statements, parallelBlock)
+		case TOKEN_POST, TOKEN_GETCONNECTION, TOKEN_PUT, TOKEN_DELETE:
+			call, err := p.parseNetworkCall(tok.Type)
+			if err != nil {
+				return nil, err
+			}
+			ast.Statements = append(ast.Statements, call)
 		case TOKEN_DO:
 			stmt, err := p.parseDo()
 			if err != nil {
@@ -219,4 +242,69 @@ func (p *Parser) parseArray() (*ArrayDeclaration, error) {
 
 func (p *Parser) unread(tok Token) {
 	// Simplified unread for this implementation
+}
+
+func (p *Parser) parseNetworkCall(method TokenType) (*NetworkCall, error) {
+	call := &NetworkCall{}
+
+	// Get method
+	switch method {
+	case TOKEN_POST:
+		call.Method = "POST"
+	case TOKEN_GET:
+		call.Method = "GET"
+	case TOKEN_PUT:
+		call.Method = "PUT"
+	case TOKEN_DELETE:
+		call.Method = "DELETE"
+	}
+
+	// Parse URL
+	_, err := p.lexer.Lex() // consume 'to', 'from', or 'in'
+	urlTok, err := p.lexer.Lex()
+	if err != nil {
+		return nil, err
+	}
+	call.URL = urlTok.Value
+
+	// Parse payload if exists
+	payloadTok, err := p.lexer.Lex()
+	if err == nil && payloadTok.Type == TOKEN_PAYLOAD {
+		dataTok, err := p.lexer.Lex()
+		if err != nil {
+			return nil, err
+		}
+		call.Payload = dataTok.Value
+	} else {
+		p.unread(payloadTok)
+	}
+
+	return call, nil
+}
+
+func (p *Parser) parseParallel() (*ParallelBlock, error) {
+	block := &ParallelBlock{}
+
+	for {
+		tok, err := p.lexer.Lex()
+		if err != nil {
+			return nil, err
+		}
+
+		if tok.Type == TOKEN_END {
+			break
+		}
+
+		if tok.Type == TOKEN_POST || tok.Type == TOKEN_GET ||
+			tok.Type == TOKEN_PUT || tok.Type == TOKEN_DELETE {
+			call, err := p.parseNetworkCall(tok.Type)
+			if err != nil {
+				return nil, err
+			}
+			call.Parallel = true
+			block.Calls = append(block.Calls, call)
+		}
+	}
+
+	return block, nil
 }
