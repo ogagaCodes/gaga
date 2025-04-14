@@ -1,8 +1,18 @@
 package compiler
 
+import (
+	"fmt"
+	"strconv"
+)
+
 type Parser struct {
 	lexer   *Lexer
 	current Token
+}
+
+type ArrayDeclaration struct {
+	Name     string
+	Elements []interface{}
 }
 
 type AST struct {
@@ -38,7 +48,6 @@ func NewParser(lexer *Lexer) *Parser {
 
 func (p *Parser) Parse() (*AST, error) {
 	ast := &AST{}
-
 	for {
 		tok, err := p.lexer.Lex()
 		if err != nil {
@@ -56,11 +65,29 @@ func (p *Parser) Parse() (*AST, error) {
 			}
 			ast.Statements = append(ast.Statements, stmt)
 		case TOKEN_MAKE:
-			stmt, err := p.parseFunction()
+			// Peek next token to determine make type
+			nextTok, err := p.lexer.Lex()
 			if err != nil {
 				return nil, err
 			}
-			ast.Statements = append(ast.Statements, stmt)
+			p.unread(nextTok) // Put back the token we peeked
+
+			switch nextTok.Type {
+			case TOKEN_ARRAY:
+				arr, err := p.parseArray()
+				if err != nil {
+					return nil, err
+				}
+				ast.Statements = append(ast.Statements, arr)
+			case TOKEN_FUNCTION:
+				stmt, err := p.parseFunction()
+				if err != nil {
+					return nil, err
+				}
+				ast.Statements = append(ast.Statements, stmt)
+			default:
+				return nil, fmt.Errorf("unexpected token after MAKE: %v", nextTok)
+			}
 		case TOKEN_GET:
 			pathTok, err := p.lexer.Lex()
 			if err != nil {
@@ -77,7 +104,6 @@ func (p *Parser) Parse() (*AST, error) {
 			}
 		}
 	}
-
 	return ast, nil
 }
 
@@ -151,6 +177,44 @@ func (p *Parser) parseVar() (*VarStatement, error) {
 		Name:  nameTok.Value,
 		Value: valTok.Value,
 	}, nil
+}
+
+func (p *Parser) parseArray() (*ArrayDeclaration, error) {
+	// Get array name
+	nameTok, err := p.lexer.Lex()
+	if err != nil || nameTok.Type != TOKEN_IDENT {
+		return nil, fmt.Errorf("expected array name")
+	}
+
+	arr := &ArrayDeclaration{Name: nameTok.Value}
+
+	// Parse elements
+	for {
+		tok, err := p.lexer.Lex()
+		if err != nil {
+			return nil, err
+		}
+		if tok.Type == TOKEN_NEWLINE || tok.Type == TOKEN_EOF {
+			break
+		}
+
+		switch tok.Type {
+		case TOKEN_IDENT:
+			arr.Elements = append(arr.Elements, tok.Value)
+		case TOKEN_NUMBER:
+			num, _ := strconv.Atoi(tok.Value)
+			arr.Elements = append(arr.Elements, num)
+		case TOKEN_FLOAT:
+			num, _ := strconv.ParseFloat(tok.Value, 64)
+			arr.Elements = append(arr.Elements, num)
+		case TOKEN_STRING:
+			arr.Elements = append(arr.Elements, tok.Value)
+		default:
+			return nil, fmt.Errorf("invalid array element: %v", tok)
+		}
+	}
+
+	return arr, nil
 }
 
 func (p *Parser) unread(tok Token) {

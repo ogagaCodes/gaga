@@ -23,6 +23,9 @@ const (
 	TOKEN_GET
 	TOKEN_LPAREN
 	TOKEN_RPAREN
+	TOKEN_ARRAY
+	TOKEN_FLOAT
+	TOKEN_NEWLINE
 	TOKEN_END
 )
 
@@ -90,16 +93,27 @@ func (l *Lexer) Lex() (Token, error) {
 
 func (l *Lexer) lexNumber() (Token, error) {
 	var buf strings.Builder
+	isFloat := false
+
 	for {
 		ch := l.read()
 		if ch == eof {
 			break
 		}
-		if !unicode.IsDigit(ch) {
+
+		if ch == '.' && !isFloat {
+			isFloat = true
+			buf.WriteRune(ch)
+		} else if !unicode.IsDigit(ch) {
 			l.unread()
 			break
+		} else {
+			buf.WriteRune(ch)
 		}
-		buf.WriteRune(ch)
+	}
+
+	if isFloat {
+		return Token{TOKEN_FLOAT, buf.String()}, nil
 	}
 	return Token{TOKEN_NUMBER, buf.String()}, nil
 }
@@ -151,6 +165,8 @@ func (l *Lexer) lexIdent() (Token, error) {
 		return Token{TOKEN_GET, str}, nil
 	case "end":
 		return Token{TOKEN_END, str}, nil
+	case "array":
+		return Token{TOKEN_ARRAY, str}, nil
 	default:
 		return Token{TOKEN_IDENT, buf.String()}, nil
 	}
