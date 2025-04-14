@@ -1,0 +1,9 @@
+# Single request
+post to "https://api.example.com" payload {"data":"test"}
+
+# Parallel batch
+parallel
+    get from "https://api.example.com/users/1"
+    get from "https://api.example.com/users/2"
+    post to "https://api.example.com/users" payload {"name":"new"}
+end

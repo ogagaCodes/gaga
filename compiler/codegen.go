@@ -7,6 +7,36 @@ import (
 	"strings"
 )
 
+const networkTemplate = `
+// #include <stdlib.h>
+// #include <curl/curl.h>
+//
+// typedef struct {
+//     char* url;
+//     char* method;
+//     char* data;
+// } Request;
+//
+// void perform_request(Request* req) {
+//     CURL *curl = curl_easy_init();
+//     if(curl) {
+//         curl_easy_setopt(curl, CURLOPT_URL, req->url);
+//         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, req->method);
+//         if(req->data) {
+//             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, req->data);
+//         }
+//         curl_easy_perform(curl);
+//         curl_easy_cleanup(curl);
+//     }
+// }
+import "C"
+import (
+    "unsafe"
+    "sync"
+)
+
+`
+
 type CodeGenerator struct {
 	ast *AST
 }
@@ -40,6 +70,20 @@ func (c *CodeGenerator) Generate() (string, error) {
 					code += fmt.Sprintf("%d", v)
 				case float64:
 					code += fmt.Sprintf("%f", v)
+
+				case *NetworkCall:
+					if networkCall, ok := elem.(*NetworkCall); ok {
+						code += c.generateNetworkCall(networkCall)
+					} else {
+						code += fmt.Sprintf("%v", elem)
+					}
+				case *ParallelBlock:
+					if parallelBlock, ok := elem.(*ParallelBlock); ok {
+						code += c.generateParallelBlock(parallelBlock)
+					} else {
+						// Handle the case where elem is not a *ParallelBlock
+						code += fmt.Sprintf("%v", elem)
+					}
 				}
 			}
 			code += "}\n"
@@ -75,4 +119,66 @@ func CompileToGo(ast *AST, outputPath string) error {
 		return err
 	}
 	return os.WriteFile(outputPath, []byte(code), 0644)
+}
+
+func (c *CodeGenerator) generateNetworkCall(call *NetworkCall) string {
+	if call.Parallel {
+		return fmt.Sprintf(`
+            go func() {
+                req := C.Request{
+                    url: C.CString("%s"),
+                    method: C.CString("%s"),
+                    data: C.CString("%s"),
+                }
+                C.perform_request(&req)
+                defer C.free(unsafe.Pointer(req.url))
+                defer C.free(unsafe.Pointer(req.method))
+                defer C.free(unsafe.Pointer(req.data))
+            }()
+        `, call.URL, call.Method, call.Payload)
+	}
+
+	return fmt.Sprintf(`
+        req := C.Request{
+            url: C.CString("%s"),
+            method: C.CString("%s"),
+            data: C.CString("%s"),
+        }
+        C.perform_request(&req)
+        defer C.free(unsafe.Pointer(req.url))
+        defer C.free(unsafe.Pointer(req.method))
+        defer C.free(unsafe.Pointer(req.data))
+    `, call.URL, call.Method, call.Payload)
+}
+
+func (c *CodeGenerator) generateParallelBlock(block *ParallelBlock) string {
+	code := `
+        var wg sync.WaitGroup
+        sem := make(chan struct{}, 1000) // Limit concurrency
+    `
+
+	for _, call := range block.Calls {
+		code += fmt.Sprintf(`
+            wg.Add(1)
+            go func() {
+                defer wg.Done()
+                sem <- struct{}{}
+                defer func() { <-sem }()
+                req := C.Request{
+                    url: C.CString("%s"),
+                    method: C.CString("%s"),
+                    data: C.CString("%s"),
+                }
+                C.perform_request(&req)
+                defer C.free(unsafe.Pointer(req.url))
+                defer C.free(unsafe.Pointer(req.method))
+                defer C.free(unsafe.Pointer(req.data))
+            }()
+        `, call.URL, call.Method, call.Payload)
+	}
+
+	code += `
+        wg.Wait()
+    `
+	return code
 }

@@ -1,0 +1,143 @@
+# Gaga Programming Language
+"A simple, expressive language compiled to Go"
+
+## Key Features
+
+### 🧮 Arithmetic Operations
+```gaga
+do sum 5 3        // → 8
+do subtract 10 4  // → 6
+```
+
+### 📦 Type Inference
+```gaga
+variable age is 25       // int
+variable name is "Gaga"  // string
+```
+
+### 🛠️ Function Definitions
+```gaga
+make function greet 
+    do sum "Hello " "World"
+end
+```
+
+### 📂 Module System
+```gaga
+get math_utils.gaga  // Import other .gaga files
+```
+
+### ⚡ Go Transpilation
+Compiles to clean Go code.
+
+---
+
+## Technical Overview
+
+### Compiler Architecture
+```
+Lexer → Parser → AST → Go Code Generator
+```
+
+- Written in Go (1.21+)
+- Outputs standard Go code
+
+---
+
+## Installation
+
+### Install the Compiler
+```bash
+make install
+```
+
+### Compile a `.gaga` File
+```bash
+gaga examples/test.gaga -o output.go
+```
+
+### Run the Generated Go Code
+```bash
+go run output.go
+```
+
+---
+
+## Usage
+
+### After Installation
+```bash
+$ gaga --help
+Usage: gaga <sourcefile.gaga> [outputfile]
+```
+
+### Compile and Run
+```bash
+$ gaga examples/test.gaga
+Compilation successful! Output: a.out.go
+
+$ go run a.out.go
+8  # Result of sum operation
+```
+
+---
+
+## Troubleshooting
+
+### Getting `gaga: command not found`
+
+1. Navigate to your project directory:
+   ```bash
+   cd rootdirectory
+   ```
+
+2. Build and install (Linux/macOS):
+   ```bash
+   make install
+   ```
+
+3. Alternative manual install:
+   ```bash
+   go build -o $HOME/go/bin/gaga ./cmd/gaga/
+   ```
+
+4. Verify the binary exists:
+   ```bash
+   ls -l ~/go/bin/gaga
+   ```
+
+5. Add Go bin to your PATH (if not already):
+
+   - **For zsh (macOS default):**
+     ```bash
+     echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc
+     source ~/.zshrc
+     ```
+
+   - **For bash:**
+     ```bash
+     echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.bashrc
+     source ~/.bashrc
+     ```
+
+6. Verify installation:
+   ```bash
+   which gaga
+   # Should show: /Users/yourusername/go/bin/gaga
+   ```
+
+---
+
+## Run Directly from Project Directory
+```bash
+go run cmd/gaga/main.go examples/test.gaga
+```
+
+
+
+## for network call
+# Ubuntu/Debian
+sudo apt-get install libcurl4-openssl-dev
+
+# macOS
+brew install curl

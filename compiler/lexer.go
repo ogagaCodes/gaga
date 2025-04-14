@@ -27,6 +27,15 @@ const (
 	TOKEN_FLOAT
 	TOKEN_NEWLINE
 	TOKEN_END
+	TOKEN_POST
+	TOKEN_GETCONNECTION
+	TOKEN_PUT
+	TOKEN_DELETE
+	TOKEN_TO
+	TOKEN_FROM
+	TOKEN_IN
+	TOKEN_PAYLOAD
+	TOKEN_PARALLEL
 )
 
 type Token struct {
@@ -167,6 +176,25 @@ func (l *Lexer) lexIdent() (Token, error) {
 		return Token{TOKEN_END, str}, nil
 	case "array":
 		return Token{TOKEN_ARRAY, str}, nil
+
+	case "post":
+		return Token{TOKEN_POST, str}, nil
+	case "getConnection":
+		return Token{TOKEN_GETCONNECTION, str}, nil
+	case "put":
+		return Token{TOKEN_PUT, str}, nil
+	case "delete":
+		return Token{TOKEN_DELETE, str}, nil
+	case "to":
+		return Token{TOKEN_TO, str}, nil
+	case "from":
+		return Token{TOKEN_FROM, str}, nil
+	case "in":
+		return Token{TOKEN_IN, str}, nil
+	case "payload":
+		return Token{TOKEN_PAYLOAD, str}, nil
+	case "parallel":
+		return Token{TOKEN_PARALLEL, str}, nil
 	default:
 		return Token{TOKEN_IDENT, buf.String()}, nil
 	}
